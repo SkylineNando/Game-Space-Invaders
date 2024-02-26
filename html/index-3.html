@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Invaders</title>
+<style>
+    canvas {
+        border: 2px solid black;
+        display: block;
+        margin: 0 auto;
+    }
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="480" height="320"></canvas>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        // Definindo variáveis para o jogador
+        const playerWidth = 20;
+        const playerHeight = 20;
+        let playerX = (canvas.width - playerWidth) / 2;
+        const playerY = canvas.height - playerHeight;
+        const playerSpeed = 5;
+
+        // Definindo variáveis para o tiro
+        const bulletWidth = 5;
+        const bulletHeight = 10;
+        let bulletX;
+        let bulletY;
+        let bulletSpeed = 7;
+        let bulletFired = false;
+
+        // Definindo variáveis para os asteroides
+        const asteroidWidth = 30;
+        const asteroidHeight = 30;
+        const numRows = 2;
+        const numCols = 6;
+        const asteroidPadding = 10;
+        let asteroidSpeed = 0.05 * bulletSpeed;
+        let asteroidsDestroyed = 0;
+        const asteroids = [];
+
+        for (let row = 0; row < numRows; row++) {
+            asteroids[row] = [];
+            for (let col = 0; col < numCols; col++) {
+                asteroids[row][col] = { x: 0, y: 0, destroyed: false };
+            }
+        }
+
+        // Centralizar os asteroides na tela
+        const asteroidsStartX = (canvas.width - (numCols * (asteroidWidth + asteroidPadding) - asteroidPadding)) / 2;
+
+        // Função para desenhar o jogador
+        function drawPlayer() {
+            ctx.beginPath();
+            ctx.rect(playerX, playerY, playerWidth, playerHeight);
+            ctx.fillStyle = "blue";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Função para desenhar o tiro
+        function drawBullet() {
+            ctx.beginPath();
+            ctx.rect(bulletX, bulletY, bulletWidth, bulletHeight);
+            ctx.fillStyle = "red";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Função para desenhar os asteroides
+        function drawAsteroids() {
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    if (!asteroids[row][col].destroyed) {
+                        const asteroidX = asteroidsStartX + col * (asteroidWidth + asteroidPadding);
+                        const asteroidY = asteroids[row][col].y;
+                        asteroids[row][col].x = asteroidX;
+                        ctx.beginPath();
+                        ctx.rect(asteroidX, asteroidY, asteroidWidth, asteroidHeight);
+                        ctx.fillStyle = "green";
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        }
+
+        // Variáveis para controlar o teclado
+        let rightPressed = false;
+        let leftPressed = false;
+
+        // Event listeners para detectar teclas pressionadas
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        function keyDownHandler(e) {
+            if (e.key === "Right" || e.key === "ArrowRight") {
+                rightPressed = true;
+            } else if (e.key === "Left" || e.key === "ArrowLeft") {
+                leftPressed = true;
+            } else if (e.key === " ") { // Espaço para atirar
+                if (!bulletFired) {
+                    bulletFired = true;
+                    bulletX = playerX + (playerWidth / 2) - (bulletWidth / 2);
+                    bulletY = playerY;
+                }
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.key === "Right" || e.key === "ArrowRight") {
+                rightPressed = false;
+            } else if (e.key === "Left" || e.key === "ArrowLeft") {
+                leftPressed = false;
+            }
+        }
+
+        // Função principal do jogo
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawPlayer();
+            drawAsteroids();
+
+            if (bulletFired) {
+                drawBullet();
+                bulletY -= bulletSpeed;
+                if (bulletY < 0) {
+                    bulletFired = false;
+                }
+            }
+
+            // Movimento do jogador
+            if (rightPressed && playerX < canvas.width - playerWidth) {
+                playerX += playerSpeed;
+            } else if (leftPressed && playerX > 0) {
+                playerX -= playerSpeed;
+            }
+
+            // Movimento dos asteroides
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    if (!asteroids[row][col].destroyed) {
+                        asteroids[row][col].y += asteroidSpeed;
+                        if (asteroids[row][col].y > canvas.height) {
+                            // Reiniciar posição dos asteroides quando atingirem a borda inferior
+                            asteroids[row][col].y = -asteroidHeight;
+                        }
+                    }
+                }
+            }
+
+            // Verificar colisões com os asteroides
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    if (!asteroids[row][col].destroyed) {
+                        if (bulletFired && bulletX > asteroids[row][col].x && bulletX < asteroids[row][col].x + asteroidWidth &&
+                            bulletY > asteroids[row][col].y && bulletY < asteroids[row][col].y + asteroidHeight) {
+                            asteroids[row][col].destroyed = true;
+                            bulletFired = false;
+                            asteroidsDestroyed++;
+
+                            // Verificar se todos os asteroides foram destruídos
+                            if (asteroidsDestroyed === numRows * numCols) {
+                                // Explodir o jogo
+                                // Aqui você pode definir uma ação para explodir o jogo
+                                // Por exemplo, reiniciar os asteroides com uma velocidade maior
+                                resetAsteroids();
+                                asteroidSpeed *= 2; // Dobrar a velocidade dos asteroides
+                                asteroidsDestroyed = 0; // Resetar o contador de asteroides destruídos
+                            }
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(draw);
+        }
+
+        // Função para reiniciar os asteroides
+        function resetAsteroids() {
+            for (let row = 0; row < numRows; row++) {
+                for (let col = 0; col < numCols; col++) {
+                    asteroids[row][col].destroyed = false;
+                }
+            }
+        }
+
+        draw();
+    });
+</script>
+</body>
+</html>
